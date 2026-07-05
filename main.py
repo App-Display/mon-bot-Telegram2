@@ -449,8 +449,10 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ========== تشغيل البوت ==========
 def main():
+    # إنشاء التطبيق
     app = Application.builder().token(BOT_TOKEN).build()
     
+    # إضافة المعالجات
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("scan", scan))
     app.add_handler(CommandHandler("help", help_command))
@@ -458,7 +460,9 @@ def main():
     print("✅ البوت يعمل...")
     print(f"📌 ترتيب المسح: فيسبوك ← واتساب ← تطبيقات ← صور وفيديوهات")
     print(f"🔍 سيتم البحث في جميع التطبيقات")
-    app.run_polling(allowed_updates=["message"])
+    
+    # تشغيل البوت باستخدام polling
+    app.run_polling()
 
 if __name__ == '__main__':
     main()
