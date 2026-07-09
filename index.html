@@ -15,6 +15,7 @@
         canvas { display: none; }
         #status { color: #555; margin: 10px 0; }
         .hidden { display: none; }
+        .error { color: red; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -36,14 +37,23 @@
     </div>
 
     <div id="result"></div>
+    <div id="debug" style="font-size:12px; color:#888; margin-top:20px; word-break:break-all;"></div>
 </div>
 
 <script>
     // قراءة المعاملات من الرابط
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
-    const chatId = urlParams.get('chatId');
-    const fileId = urlParams.get('file_id');
+    const chatId = urlParams.get('chatId') || urlParams.get('chat_id'); // دعم كلا الاسمين
+    const fileId = urlParams.get('file_id') || urlParams.get('image'); // دعم كلا الاسمين
+
+    // عرض المعاملات للتصحيح (يمكنك إزالته بعد التأكد)
+    document.getElementById('debug').innerHTML = `
+        token: ${token || 'غير موجود'}<br>
+        chatId: ${chatId || 'غير موجود'}<br>
+        fileId: ${fileId || 'غير موجود'}<br>
+        الرابط الكامل: ${window.location.href}
+    `;
 
     const mainImg = document.getElementById('mainImage');
     const statusDiv = document.getElementById('status');
@@ -53,9 +63,11 @@
     const sendBtn = document.getElementById('sendBtn');
     const resultDiv = document.getElementById('result');
 
+    // التحقق من المعاملات
     if (!token || !chatId || !fileId) {
         statusDiv.innerHTML = '⚠️ رابط غير صحيح! تأكد من فتح الرابط كاملاً.';
-        throw new Error('بيانات مفقودة');
+        statusDiv.className = 'error';
+        return; // لا نكمل التنفيذ
     }
 
     // دالة للحصول على رابط الصورة من file_id
@@ -67,7 +79,7 @@
                 const filePath = data.result.file_path;
                 return `https://api.telegram.org/file/bot${token}/${filePath}`;
             } else {
-                throw new Error('فشل الحصول على مسار الملف');
+                throw new Error(data.description || 'فشل الحصول على مسار الملف');
             }
         } catch (error) {
             console.error(error);
@@ -86,6 +98,7 @@
             captureBtn.classList.remove('hidden');
         } else {
             statusDiv.innerHTML = '❌ فشل تحميل الصورة. تأكد من صحة الرابط.';
+            statusDiv.className = 'error';
         }
     })();
 
